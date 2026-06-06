@@ -71,7 +71,7 @@
     if (logic.isLeaf(node)) return renderLeaf(node);
 
     var details = el("details");
-    details.open = false;
+    details.setAttribute("data-node-id", node.id);
     var summary = el("summary");
     summary.appendChild(el("span", "summary-title", node.title));
     var s = logic.summarizeNode(node, levels);
@@ -95,12 +95,31 @@
       s.met + " av " + s.total + " färdigheter på rekommenderad nivå"));
   }
 
+  function getOpenNodeIds(view) {
+    var open = [];
+    var els = view.querySelectorAll("details[open]");
+    for (var i = 0; i < els.length; i++) {
+      var id = els[i].getAttribute("data-node-id");
+      if (id) open.push(id);
+    }
+    return open;
+  }
+
+  function restoreOpenNodeIds(view, ids) {
+    ids.forEach(function (id) {
+      var el = view.querySelector('details[data-node-id="' + id + '"]');
+      if (el) el.open = true;
+    });
+  }
+
   function renderOverview() {
     var view = document.getElementById("overview-view");
+    var openIds = getOpenNodeIds(view);
     view.innerHTML = "";
     role.nodes.forEach(function (node) {
       view.appendChild(renderNode(node));
     });
+    restoreOpenNodeIds(view, openIds);
   }
 
   function renderPlan() {
