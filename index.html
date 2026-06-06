@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kompetensöverblick</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header id="role-header"></header>
+  <nav id="view-tabs">
+    <button type="button" data-view="overview" class="active">Översikt</button>
+    <button type="button" data-view="plan">Utvecklingsplan</button>
+  </nav>
+  <main>
+    <section id="overview-view"></section>
+    <section id="plan-view" hidden></section>
+  </main>
+  <script src="data.js"></script>
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
