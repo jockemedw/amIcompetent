@@ -152,6 +152,17 @@
     renderPlan();
   }
 
+  // Re-render on any level change (state lives in localStorage + `levels`).
+  document.addEventListener("change", function (e) {
+    var target = e.target;
+    if (target.tagName === "SELECT" && target.getAttribute("data-leaf-id")) {
+      var id = target.getAttribute("data-leaf-id");
+      levels[id] = parseInt(target.value, 10);
+      saveLevels(levels);
+      render();
+    }
+  });
+
   // Tab switching between Översikt and Utvecklingsplan.
   document.getElementById("view-tabs").addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-view]");
