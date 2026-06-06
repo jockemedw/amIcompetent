@@ -59,4 +59,22 @@ test("isLeafMet: true when level >= target", () => {
   assert.strictEqual(logic.isLeafMet(leaf, { "leaf-1": 1 }), false);
 });
 
+test("summarizeNode: counts met leaves out of total under a node", () => {
+  // cat-a has leaf-1 (target 3) and leaf-2 (target 2)
+  const node = fixtureRole.nodes[0];
+  const result = logic.summarizeNode(node, { "leaf-1": 3, "leaf-2": 1 });
+  assert.deepStrictEqual(result, { met: 1, total: 2 });
+});
+
+test("summarizeNode: a direct leaf node summarizes itself", () => {
+  const node = fixtureRole.nodes[1]; // leaf-3, target 1
+  assert.deepStrictEqual(logic.summarizeNode(node, { "leaf-3": 1 }), { met: 1, total: 1 });
+  assert.deepStrictEqual(logic.summarizeNode(node, {}), { met: 0, total: 1 });
+});
+
+test("summarizeRole: counts across all role leaves", () => {
+  const result = logic.summarizeRole(fixtureRole, { "leaf-1": 3, "leaf-2": 2, "leaf-3": 0 });
+  assert.deepStrictEqual(result, { met: 2, total: 3 });
+});
+
 module.exports = { fixtureRole };

@@ -34,6 +34,18 @@
     return getLevel(levels, leaf.id) >= leaf.target;
   }
 
+  function summarizeNode(node, levels) {
+    var leaves = collectLeaves(node);
+    var met = leaves.filter(function (leaf) { return isLeafMet(leaf, levels); }).length;
+    return { met: met, total: leaves.length };
+  }
+
+  function summarizeRole(role, levels) {
+    var leaves = collectRoleLeaves(role);
+    var met = leaves.filter(function (leaf) { return isLeafMet(leaf, levels); }).length;
+    return { met: met, total: leaves.length };
+  }
+
   var api = {
     DEFAULT_LEVEL: DEFAULT_LEVEL,
     isLeaf: isLeaf,
@@ -41,7 +53,9 @@
     collectRoleLeaves: collectRoleLeaves,
     getLevel: getLevel,
     leafGap: leafGap,
-    isLeafMet: isLeafMet
+    isLeafMet: isLeafMet,
+    summarizeNode: summarizeNode,
+    summarizeRole: summarizeRole
   };
 
   if (typeof module !== "undefined" && module.exports) {
