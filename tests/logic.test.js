@@ -95,4 +95,23 @@ test("buildDevelopmentPlan: omits categories with no gaps", () => {
   assert.deepStrictEqual(plan, []);
 });
 
+test("validateRole: no errors for a valid role", () => {
+  assert.deepStrictEqual(logic.validateRole(fixtureRole), []);
+});
+
+test("validateRole: flags duplicate ids", () => {
+  const role = { id: "r", title: "R", nodes: [
+    { id: "dup", title: "A", target: 1 },
+    { id: "dup", title: "B", target: 1 }
+  ]};
+  assert.ok(logic.validateRole(role).some(e => e.includes("Duplicate id: dup")));
+});
+
+test("validateRole: flags leaf without numeric target", () => {
+  const role = { id: "r", title: "R", nodes: [
+    { id: "x", title: "X" }
+  ]};
+  assert.ok(logic.validateRole(role).some(e => e.includes("missing numeric target: x")));
+});
+
 module.exports = { fixtureRole };

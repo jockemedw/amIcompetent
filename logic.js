@@ -56,6 +56,24 @@
     }).filter(function (group) { return group.items.length > 0; });
   }
 
+  function validateRole(role) {
+    var errors = [];
+    var seen = {};
+    function walk(node) {
+      if (seen[node.id]) errors.push("Duplicate id: " + node.id);
+      seen[node.id] = true;
+      if (isLeaf(node)) {
+        if (typeof node.target !== "number") {
+          errors.push("Leaf missing numeric target: " + node.id);
+        }
+      } else {
+        node.children.forEach(walk);
+      }
+    }
+    role.nodes.forEach(walk);
+    return errors;
+  }
+
   var api = {
     DEFAULT_LEVEL: DEFAULT_LEVEL,
     isLeaf: isLeaf,
@@ -66,7 +84,8 @@
     isLeafMet: isLeafMet,
     summarizeNode: summarizeNode,
     summarizeRole: summarizeRole,
-    buildDevelopmentPlan: buildDevelopmentPlan
+    buildDevelopmentPlan: buildDevelopmentPlan,
+    validateRole: validateRole
   };
 
   if (typeof module !== "undefined" && module.exports) {
