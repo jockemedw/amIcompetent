@@ -103,22 +103,48 @@
     });
   }
 
+  function renderPlan() {
+    var view = document.getElementById("plan-view");
+    view.innerHTML = "";
+    var plan = logic.buildDevelopmentPlan(role, levels);
+    if (plan.length === 0) {
+      view.appendChild(el("p", "plan-empty",
+        "Inga gap — du är på rekommenderad nivå för alla färdigheter."));
+      return;
+    }
+    plan.forEach(function (group) {
+      var groupEl = el("div", "plan-group");
+      groupEl.appendChild(el("h2", null, group.category));
+      group.items.forEach(function (item) {
+        var itemEl = el("div", "plan-item");
+        itemEl.appendChild(el("span", "plan-item-title", item.leaf.title));
+        itemEl.appendChild(el("span", "plan-gap",
+          "Mål: " + labelForLevel(item.leaf.target) +
+          " (nu: " + labelForLevel(logic.getLevel(levels, item.leaf.id)) + ")"));
+        groupEl.appendChild(itemEl);
+      });
+      view.appendChild(groupEl);
+    });
+  }
+
   function render() {
     renderHeader();
     renderOverview();
+    renderPlan();
   }
 
-  // Re-render on any level change (state lives in localStorage + `levels`).
-  document.addEventListener("change", function (e) {
-    var target = e.target;
-    if (target.tagName === "SELECT" && target.getAttribute("data-leaf-id")) {
-      var id = target.getAttribute("data-leaf-id");
-      levels[id] = parseInt(target.value, 10);
-      saveLevels(levels);
-      render();
+  // Tab switching between Översikt and Utvecklingsplan.
+  document.getElementById("view-tabs").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-view]");
+    if (!btn) return;
+    var view = btn.getAttribute("data-view");
+    var buttons = this.querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].classList.toggle("active", buttons[i] === btn);
     }
+    document.getElementById("overview-view").hidden = (view !== "overview");
+    document.getElementById("plan-view").hidden = (view !== "plan");
   });
 
   render();
-  window.__competencyRender = render; // used by the view-tab task
 })();
