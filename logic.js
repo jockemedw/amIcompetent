@@ -46,6 +46,16 @@
     return { met: met, total: leaves.length };
   }
 
+  function buildDevelopmentPlan(role, levels) {
+    return role.nodes.map(function (node) {
+      var items = collectLeaves(node)
+        .filter(function (leaf) { return leafGap(leaf, levels) > 0; })
+        .map(function (leaf) { return { leaf: leaf, gap: leafGap(leaf, levels) }; })
+        .sort(function (a, b) { return b.gap - a.gap; });
+      return { category: node.title, items: items };
+    }).filter(function (group) { return group.items.length > 0; });
+  }
+
   var api = {
     DEFAULT_LEVEL: DEFAULT_LEVEL,
     isLeaf: isLeaf,
@@ -55,7 +65,8 @@
     leafGap: leafGap,
     isLeafMet: isLeafMet,
     summarizeNode: summarizeNode,
-    summarizeRole: summarizeRole
+    summarizeRole: summarizeRole,
+    buildDevelopmentPlan: buildDevelopmentPlan
   };
 
   if (typeof module !== "undefined" && module.exports) {

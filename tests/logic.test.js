@@ -77,4 +77,22 @@ test("summarizeRole: counts across all role leaves", () => {
   assert.deepStrictEqual(result, { met: 2, total: 3 });
 });
 
+test("buildDevelopmentPlan: groups gaps by top-level category, sorted by gap desc", () => {
+  // leaf-1 target 3 @ level 0 => gap 3; leaf-2 target 2 @ level 2 => gap 0 (excluded)
+  // leaf-3 target 1 @ level 0 => gap 1
+  const plan = logic.buildDevelopmentPlan(fixtureRole, { "leaf-2": 2 });
+  assert.strictEqual(plan.length, 2);
+  assert.strictEqual(plan[0].category, "Kategori A");
+  assert.deepStrictEqual(plan[0].items.map(i => [i.leaf.id, i.gap]), [["leaf-1", 3]]);
+  assert.strictEqual(plan[1].category, "Direkt löv");
+  assert.deepStrictEqual(plan[1].items.map(i => [i.leaf.id, i.gap]), [["leaf-3", 1]]);
+});
+
+test("buildDevelopmentPlan: omits categories with no gaps", () => {
+  const plan = logic.buildDevelopmentPlan(fixtureRole, {
+    "leaf-1": 3, "leaf-2": 2, "leaf-3": 1
+  });
+  assert.deepStrictEqual(plan, []);
+});
+
 module.exports = { fixtureRole };
