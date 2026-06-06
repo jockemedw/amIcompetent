@@ -20,11 +20,28 @@
     }, []);
   }
 
+  function getLevel(levels, leafId) {
+    return Object.prototype.hasOwnProperty.call(levels, leafId)
+      ? levels[leafId]
+      : DEFAULT_LEVEL;
+  }
+
+  function leafGap(leaf, levels) {
+    return leaf.target - getLevel(levels, leaf.id);
+  }
+
+  function isLeafMet(leaf, levels) {
+    return getLevel(levels, leaf.id) >= leaf.target;
+  }
+
   var api = {
     DEFAULT_LEVEL: DEFAULT_LEVEL,
     isLeaf: isLeaf,
     collectLeaves: collectLeaves,
-    collectRoleLeaves: collectRoleLeaves
+    collectRoleLeaves: collectRoleLeaves,
+    getLevel: getLevel,
+    leafGap: leafGap,
+    isLeafMet: isLeafMet
   };
 
   if (typeof module !== "undefined" && module.exports) {

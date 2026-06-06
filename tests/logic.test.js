@@ -35,4 +35,28 @@ test("collectRoleLeaves: flattens all leaves across the role", () => {
   assert.deepStrictEqual(leaves.map(l => l.id), ["leaf-1", "leaf-2", "leaf-3"]);
 });
 
+test("getLevel: returns stored level", () => {
+  assert.strictEqual(logic.getLevel({ "leaf-1": 2 }, "leaf-1"), 2);
+});
+
+test("getLevel: returns DEFAULT_LEVEL when unset", () => {
+  assert.strictEqual(logic.getLevel({}, "leaf-1"), logic.DEFAULT_LEVEL);
+});
+
+test("leafGap: target minus level", () => {
+  const leaf = { id: "leaf-1", target: 3 };
+  assert.strictEqual(logic.leafGap(leaf, { "leaf-1": 1 }), 2);
+});
+
+test("leafGap: zero or negative when met or exceeded", () => {
+  const leaf = { id: "leaf-1", target: 2 };
+  assert.strictEqual(logic.leafGap(leaf, { "leaf-1": 3 }), -1);
+});
+
+test("isLeafMet: true when level >= target", () => {
+  const leaf = { id: "leaf-1", target: 2 };
+  assert.strictEqual(logic.isLeafMet(leaf, { "leaf-1": 2 }), true);
+  assert.strictEqual(logic.isLeafMet(leaf, { "leaf-1": 1 }), false);
+});
+
 module.exports = { fixtureRole };
