@@ -25,6 +25,10 @@ test("isLeaf: node with children is not a leaf", () => {
   assert.strictEqual(logic.isLeaf({ id: "x", children: [{ id: "y", target: 1 }] }), false);
 });
 
+test("isLeaf: node with empty children array is a leaf", () => {
+  assert.strictEqual(logic.isLeaf({ id: "x", children: [] }), true);
+});
+
 test("collectLeaves: returns all leaves under a node recursively", () => {
   const leaves = logic.collectLeaves(fixtureRole.nodes[0]);
   assert.deepStrictEqual(leaves.map(l => l.id), ["leaf-1", "leaf-2"]);
@@ -111,6 +115,11 @@ test("validateRole: flags leaf without numeric target", () => {
   const role = { id: "r", title: "R", nodes: [
     { id: "x", title: "X" }
   ]};
+  assert.ok(logic.validateRole(role).some(e => e.includes("missing numeric target: x")));
+});
+
+test("validateRole: flags NaN target as missing numeric target", () => {
+  const role = { id: "r", title: "R", nodes: [{ id: "x", title: "X", target: NaN }] };
   assert.ok(logic.validateRole(role).some(e => e.includes("missing numeric target: x")));
 });
 

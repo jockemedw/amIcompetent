@@ -58,12 +58,12 @@
 
   function validateRole(role) {
     var errors = [];
-    var seen = {};
+    var seen = Object.create(null);
     function walk(node) {
       if (seen[node.id]) errors.push("Duplicate id: " + node.id);
       seen[node.id] = true;
       if (isLeaf(node)) {
-        if (typeof node.target !== "number") {
+        if (typeof node.target !== "number" || isNaN(node.target)) {
           errors.push("Leaf missing numeric target: " + node.id);
         }
       } else {
