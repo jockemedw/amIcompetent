@@ -17,7 +17,8 @@ function loadData() {
 test("data.js: defines a scale with 4 levels", () => {
   const data = loadData();
   assert.strictEqual(data.scale.length, 4);
-  assert.deepEqual(data.scale.map(s => s.level), [0, 1, 2, 3]);
+  assert.deepStrictEqual([...data.scale].map(s => s.level), [0, 1, 2, 3]);
+  assert.deepStrictEqual([...data.scale].map(s => s.label), ["Ingen", "Grundläggande", "Kompetent", "Expert"]);
 });
 
 test("data.js: has the Fastighetsutvecklare role", () => {
@@ -30,6 +31,7 @@ test("data.js: has the Fastighetsutvecklare role", () => {
 test("data.js: role passes validation", () => {
   const data = loadData();
   assert.deepStrictEqual(logic.validateRole(data.roles[0]), []);
+  assert.strictEqual(logic.collectRoleLeaves(data.roles[0]).length, 7);
 });
 
 test("data.js: includes the lagkrav leaves PBL, Jordabalken, BFS 2024", () => {
