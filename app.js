@@ -5,6 +5,8 @@
   var data = window.COMPETENCY_DATA;
   var scale = data.scale;
   var scaleHelp = data.scaleHelp || [];
+  var quizData = window.QUIZ_DATA || {};
+  var quizApi = window.QuizLogic;
 
   var STORAGE_PREFIX = "amicompetent:";
   var ROLE_KEY = STORAGE_PREFIX + "role";
@@ -20,6 +22,7 @@
   var selectedLeafId = restoreSelectedLeaf();
   var openAreas = defaultOpenAreas();
   var lastDetailLeaf = null;        // gates the detail entrance animation
+  var quizSession = null;   // { leafId, questions, answers:[], index, pending, revealed }
 
   // --- persistence helpers --------------------------------------------
 
@@ -39,6 +42,22 @@
 
   function saveLevels() {
     localStorage.setItem(levelsKey(role), JSON.stringify(levels));
+  }
+
+  function quizResultKey(leafId) {
+    return STORAGE_PREFIX + "quiz:" + role.id + ":" + leafId;
+  }
+
+  function loadQuizResult(leafId) {
+    try { return JSON.parse(localStorage.getItem(quizResultKey(leafId))); }
+    catch (e) { return null; }
+  }
+
+  function saveQuizResult(leafId, level) {
+    localStorage.setItem(quizResultKey(leafId), JSON.stringify({
+      resultLevel: level,
+      date: new Date().toISOString().slice(0, 10)
+    }));
   }
 
   function restoreSelectedLeaf() {
@@ -456,6 +475,13 @@
         gap + (gap === 1 ? " steg kvar" : " steg kvar") + " till mål"));
       meta.appendChild(gapBadge);
     }
+    var qr = loadQuizResult(leaf.id);
+    if (qr) {
+      var tested = el("span", "meta-badge is-tested");
+      tested.appendChild(svg("M20 6L9 17l-5-5", "0 0 24 24"));
+      tested.appendChild(document.createTextNode("Testad: nivå " + qr.resultLevel));
+      meta.appendChild(tested);
+    }
     card.appendChild(meta);
 
     if (leaf.description) card.appendChild(el("p", "detail-desc", leaf.description));
@@ -463,6 +489,15 @@
     card.appendChild(el("div", "detail-section-label", "Din nivå"));
     card.appendChild(el("p", "lvl-hint", "Klicka på den nivå som bäst beskriver var du är i dag."));
     card.appendChild(renderLevelLadder(leaf, animate));
+
+    if (quizApi && quizApi.hasQuiz(quizData, leaf.id)) {
+      var testBtn = el("button", "detail-test-btn");
+      testBtn.type = "button";
+      testBtn.setAttribute("data-quiz-open", leaf.id);
+      testBtn.appendChild(svg("M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11", "0 0 24 24"));
+      testBtn.appendChild(document.createTextNode("Testa dig själv"));
+      card.appendChild(testBtn);
+    }
 
     pane.appendChild(card);
   }
