@@ -104,3 +104,26 @@ test("validateQuizData: flags options that are not an array", () => {
 test("resultLevel: empty graded object => 0", () => {
   assert.strictEqual(quiz.resultLevel({}), 0);
 });
+
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+function loadQuizData() {
+  const code = fs.readFileSync(path.join(__dirname, "..", "quiz-data.js"), "utf8");
+  const sandbox = { window: {} };
+  vm.runInNewContext(code, sandbox);
+  return sandbox.window.QUIZ_DATA;
+}
+
+test("quiz-data.js: covers the five pilot skills", () => {
+  const data = loadQuizData();
+  ["pbl", "jordabalken", "bfs2024", "lou", "miljobalken"].forEach(id => {
+    assert.ok(data[id] && data[id].length >= 6, "missing/short bank: " + id);
+  });
+});
+
+test("quiz-data.js: passes structural validation", () => {
+  const data = loadQuizData();
+  assert.deepStrictEqual(quiz.validateQuizData(data), []);
+});
