@@ -3,19 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kompetensöverblick</title>
+  <title>Kompetenskarta · Lejonfastigheter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header id="role-header"></header>
-  <nav id="view-tabs">
-    <button type="button" data-view="overview" class="active">Översikt</button>
-    <button type="button" data-view="plan">Utvecklingsplan</button>
-  </nav>
-  <main>
-    <section id="overview-view"></section>
-    <section id="plan-view" hidden></section>
-  </main>
+  <div class="app" id="app">
+    <aside class="rail" id="rail" aria-label="Roller"></aside>
+    <div class="workspace">
+      <header class="topbar" id="topbar"></header>
+      <div class="content">
+        <section class="overview" id="overview-view" aria-label="Kompetensöversikt">
+          <div class="pane pane-areas" id="areas-pane"></div>
+          <div class="pane pane-detail" id="detail-pane"></div>
+        </section>
+        <section class="plan" id="plan-view" hidden aria-label="Utvecklingsplan"></section>
+      </div>
+    </div>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
   <script src="data.js"></script>
   <script src="logic.js"></script>
   <script src="app.js"></script>
