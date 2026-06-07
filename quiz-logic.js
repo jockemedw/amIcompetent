@@ -18,9 +18,23 @@
     return out;
   }
 
+  // The level the quiz places you at: the highest L such that every level
+  // 1..L was answered fully correctly. A gap caps you below it (a later
+  // level passing after an earlier one failed reads as guessing).
+  function resultLevel(graded) {
+    var level = 0;
+    for (var L = 1; L <= 3; L++) {
+      var g = graded[L];
+      if (g && g.total > 0 && g.correct === g.total) level = L;
+      else break;
+    }
+    return level;
+  }
+
   var api = {
     hasQuiz: hasQuiz,
-    gradeQuiz: gradeQuiz
+    gradeQuiz: gradeQuiz,
+    resultLevel: resultLevel
   };
 
   if (typeof module !== "undefined" && module.exports) {
