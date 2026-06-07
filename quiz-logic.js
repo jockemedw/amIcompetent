@@ -31,10 +31,38 @@
     return level;
   }
 
+  // Structural checks reused by the data test. Returns an array of strings.
+  function validateQuizData(quizData) {
+    var errors = [];
+    Object.keys(quizData).forEach(function (leafId) {
+      var qs = quizData[leafId];
+      var levelsSeen = {};
+      qs.forEach(function (q, i) {
+        var where = leafId + "[" + i + "]";
+        if (!q.options || q.options.length !== 4) {
+          errors.push(where + ": must have exactly 4 options");
+        }
+        if (typeof q.answer !== "number" || q.answer < 0 || q.answer > 3) {
+          errors.push(where + ": answer must be an index 0-3");
+        }
+        if (q.level !== 1 && q.level !== 2 && q.level !== 3) {
+          errors.push(where + ": level must be 1, 2 or 3");
+        } else {
+          levelsSeen[q.level] = true;
+        }
+      });
+      [1, 2, 3].forEach(function (L) {
+        if (!levelsSeen[L]) errors.push(leafId + ": missing a question for level " + L);
+      });
+    });
+    return errors;
+  }
+
   var api = {
     hasQuiz: hasQuiz,
     gradeQuiz: gradeQuiz,
-    resultLevel: resultLevel
+    resultLevel: resultLevel,
+    validateQuizData: validateQuizData
   };
 
   if (typeof module !== "undefined" && module.exports) {

@@ -64,3 +64,27 @@ test("resultLevel: gap in the middle stops at last contiguous pass", () => {
   const graded = { 1: { correct: 2, total: 2 }, 2: { correct: 1, total: 2 }, 3: { correct: 2, total: 2 } };
   assert.strictEqual(quiz.resultLevel(graded), 1);
 });
+
+test("validateQuizData: clean data has no errors", () => {
+  const data = {
+    foo: [
+      { level: 1, prompt: "p", options: ["a","b","c","d"], answer: 0 },
+      { level: 2, prompt: "p", options: ["a","b","c","d"], answer: 3 },
+      { level: 3, prompt: "p", options: ["a","b","c","d"], answer: 1 }
+    ]
+  };
+  assert.deepStrictEqual(quiz.validateQuizData(data), []);
+});
+
+test("validateQuizData: flags wrong option count, bad answer, missing level", () => {
+  const data = {
+    bar: [
+      { level: 1, prompt: "p", options: ["a","b","c"], answer: 0 },
+      { level: 2, prompt: "p", options: ["a","b","c","d"], answer: 9 }
+    ]
+  };
+  const errors = quiz.validateQuizData(data);
+  assert.ok(errors.some(e => e.includes("4 options")));
+  assert.ok(errors.some(e => e.includes("answer")));
+  assert.ok(errors.some(e => e.includes("level 3")));
+});
