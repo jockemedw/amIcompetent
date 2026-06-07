@@ -69,11 +69,26 @@ test("data.js: every leaf carries a full beginner→expert ladder", () => {
     logic.collectRoleLeaves(role).forEach(leaf => {
       assert.ok(leaf.levelGuide, "leaf " + leaf.id + " has a levelGuide");
       [1, 2, 3].forEach(level => {
-        assert.ok(
-          typeof leaf.levelGuide[level] === "string" && leaf.levelGuide[level].length > 0,
-          "leaf " + leaf.id + " describes level " + level
-        );
+        // A level guide may be a plain string or a deepened { summary, indicators }
+        // object — normalizeGuide unifies both. Either way it must describe the level.
+        const g = logic.normalizeGuide(leaf.levelGuide[level]);
+        assert.ok(g.summary.length > 0, "leaf " + leaf.id + " describes level " + level);
+        assert.ok(Array.isArray(g.indicators), "leaf " + leaf.id + " level " + level + " has indicators array");
       });
+    });
+  });
+});
+
+test("data.js: the flagship role's levels are deepened with indicators", () => {
+  const data = loadData();
+  const flagship = data.roles[0];
+  logic.collectRoleLeaves(flagship).forEach(leaf => {
+    [1, 2, 3].forEach(level => {
+      const g = logic.normalizeGuide(leaf.levelGuide[level]);
+      assert.ok(
+        g.indicators.length >= 2,
+        "flagship leaf " + leaf.id + " level " + level + " lists concrete indicators"
+      );
     });
   });
 });

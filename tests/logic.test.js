@@ -123,4 +123,48 @@ test("validateRole: flags NaN target as missing numeric target", () => {
   assert.ok(logic.validateRole(role).some(e => e.includes("missing numeric target: x")));
 });
 
+// --- normalizeGuide -------------------------------------------------
+
+test("normalizeGuide: a string becomes summary with no indicators", () => {
+  assert.deepStrictEqual(
+    logic.normalizeGuide("Vet att bygglov krävs."),
+    { summary: "Vet att bygglov krävs.", indicators: [] }
+  );
+});
+
+test("normalizeGuide: an object passes through summary and indicators", () => {
+  const entry = { summary: "Driver lovärenden.", indicators: ["Kan A", "Tar fram B"] };
+  assert.deepStrictEqual(logic.normalizeGuide(entry),
+    { summary: "Driver lovärenden.", indicators: ["Kan A", "Tar fram B"] });
+});
+
+test("normalizeGuide: an object without indicators defaults to empty list", () => {
+  assert.deepStrictEqual(
+    logic.normalizeGuide({ summary: "Bara text." }),
+    { summary: "Bara text.", indicators: [] }
+  );
+});
+
+test("normalizeGuide: null/undefined yields empty summary and indicators", () => {
+  assert.deepStrictEqual(logic.normalizeGuide(null), { summary: "", indicators: [] });
+  assert.deepStrictEqual(logic.normalizeGuide(undefined), { summary: "", indicators: [] });
+});
+
+// --- buildRadarData -------------------------------------------------
+
+test("buildRadarData: one entry per top-level area, in order", () => {
+  const data = logic.buildRadarData(fixtureRole, {});
+  assert.deepStrictEqual(data.map(d => d.area), ["Kategori A", "Direkt löv"]);
+});
+
+test("buildRadarData: current is the mean level, target the mean target, per area", () => {
+  // cat-a: leaf-1@3 (target 3), leaf-2@1 (target 2) => current 2, target 2.5, met 1/2
+  // leaf-3@0 (target 1) => current 0, target 1, met 0/1
+  const data = logic.buildRadarData(fixtureRole, { "leaf-1": 3, "leaf-2": 1, "leaf-3": 0 });
+  assert.deepStrictEqual(data[0],
+    { area: "Kategori A", current: 2, target: 2.5, met: 1, total: 2 });
+  assert.deepStrictEqual(data[1],
+    { area: "Direkt löv", current: 0, target: 1, met: 0, total: 1 });
+});
+
 module.exports = { fixtureRole };

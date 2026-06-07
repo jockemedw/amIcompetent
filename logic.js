@@ -56,6 +56,41 @@
     }).filter(function (group) { return group.items.length > 0; });
   }
 
+  // A level guide entry is either a plain string (one-line guide, used by the
+  // roles that have not been deepened yet) or an object { summary, indicators }.
+  // Normalize both — and missing entries — to the object shape so the UI and the
+  // development plan never have to branch on the form of the data.
+  function normalizeGuide(entry) {
+    if (entry == null) return { summary: "", indicators: [] };
+    if (typeof entry === "string") return { summary: entry, indicators: [] };
+    return {
+      summary: entry.summary || "",
+      indicators: entry.indicators || []
+    };
+  }
+
+  // Aggregate the role into one data point per top-level area for the radar:
+  // current = mean of the user's levels in the area, target = mean of the
+  // recommended targets, plus the met/total counts. Empty areas read as 0.
+  function buildRadarData(role, levels) {
+    return role.nodes.map(function (node) {
+      var leaves = collectLeaves(node);
+      var n = leaves.length || 1;
+      var curSum = leaves.reduce(function (a, leaf) {
+        return a + getLevel(levels, leaf.id);
+      }, 0);
+      var tgtSum = leaves.reduce(function (a, leaf) { return a + leaf.target; }, 0);
+      var s = summarizeNode(node, levels);
+      return {
+        area: node.title,
+        current: curSum / n,
+        target: tgtSum / n,
+        met: s.met,
+        total: s.total
+      };
+    });
+  }
+
   function validateRole(role) {
     var errors = [];
     var seen = Object.create(null);
@@ -85,6 +120,8 @@
     summarizeNode: summarizeNode,
     summarizeRole: summarizeRole,
     buildDevelopmentPlan: buildDevelopmentPlan,
+    normalizeGuide: normalizeGuide,
+    buildRadarData: buildRadarData,
     validateRole: validateRole
   };
 

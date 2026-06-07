@@ -16,7 +16,7 @@
 
   var role = findRole(localStorage.getItem(ROLE_KEY)) || data.roles[0];
   var levels = loadLevels(role);
-  var view = "overview";            // "overview" | "plan"
+  var view = "dashboard";           // "dashboard" | "overview" | "plan"
   var selectedLeafId = restoreSelectedLeaf();
   var openAreas = defaultOpenAreas();
   var lastDetailLeaf = null;        // gates the detail entrance animation
@@ -76,6 +76,18 @@
     p.setAttribute("d", path);
     s.appendChild(p);
     return s;
+  }
+
+  function svgEl(name, attrs) {
+    var e = document.createElementNS(SVG_NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // Point on a radar axis: axis i of n, starting at the top, going clockwise.
+  function radarXY(cx, cy, radius, i, n) {
+    var ang = (-90 + i * 360 / n) * Math.PI / 180;
+    return { x: cx + radius * Math.cos(ang), y: cy + radius * Math.sin(ang) };
   }
 
   function labelForLevel(level) {
@@ -221,16 +233,17 @@
     tabs.setAttribute("role", "tablist");
     var gapCount = s.total - s.met;
 
-    var t1 = el("button", "tab" + (view === "overview" ? " is-active" : ""), "Översikt");
-    t1.type = "button"; t1.setAttribute("data-view", "overview");
-    t1.setAttribute("role", "tab"); t1.setAttribute("aria-selected", view === "overview");
-    tabs.appendChild(t1);
+    function addTab(viewId, label, count) {
+      var t = el("button", "tab" + (view === viewId ? " is-active" : ""), label);
+      t.type = "button"; t.setAttribute("data-view", viewId);
+      t.setAttribute("role", "tab"); t.setAttribute("aria-selected", view === viewId);
+      if (count) t.appendChild(el("span", "tab-count", String(count)));
+      tabs.appendChild(t);
+    }
 
-    var t2 = el("button", "tab" + (view === "plan" ? " is-active" : ""), "Utvecklingsplan");
-    t2.type = "button"; t2.setAttribute("data-view", "plan");
-    t2.setAttribute("role", "tab"); t2.setAttribute("aria-selected", view === "plan");
-    if (gapCount > 0) t2.appendChild(el("span", "tab-count", String(gapCount)));
-    tabs.appendChild(t2);
+    addTab("dashboard", "Översikt");
+    addTab("overview", "Färdigheter");
+    addTab("plan", "Utvecklingsplan", gapCount > 0 ? gapCount : 0);
 
     foot.appendChild(tabs);
 
@@ -372,8 +385,20 @@
       if (isTarget) tags.appendChild(el("span", "lvl-tag tag-target", "Mål"));
       head.appendChild(tags);
       body.appendChild(head);
-      body.appendChild(el("p", "lvl-text",
-        sc.level === 0 ? "Ingen erfarenhet ännu." : guide));
+
+      if (sc.level === 0) {
+        body.appendChild(el("p", "lvl-text", "Ingen erfarenhet ännu."));
+      } else {
+        var g = logic.normalizeGuide(guide);
+        body.appendChild(el("p", "lvl-text", g.summary));
+        if (g.indicators.length) {
+          var ul = el("ul", "lvl-indicators");
+          g.indicators.forEach(function (ind) {
+            ul.appendChild(el("li", null, ind));
+          });
+          body.appendChild(ul);
+        }
+      }
       step.appendChild(body);
 
       group.appendChild(step);
@@ -443,6 +468,155 @@
   }
 
   // ====================================================================
+  // DASHBOARD view — competency radar
+  // ====================================================================
+
+  function renderRadar() {
+    var pane = document.getElementById("dashboard-view");
+    pane.innerHTML = "";
+
+    var points = logic.buildRadarData(role, levels);
+    var n = points.length;
+    var MAX = scale[scale.length - 1].level;   // top of the scale (3)
+
+    var head = el("div", "dash-head");
+    head.appendChild(el("h2", "dash-title", "Din kompetensprofil"));
+    head.appendChild(el("p", "dash-sub",
+      "Spindelnätet visar din nuvarande nivå mot rollens mål, per område. " +
+      "Ju närmare den yttre ringen, desto starkare står du."));
+    pane.appendChild(head);
+
+    var grid = el("div", "dash-grid");
+
+    // ---- the radar chart ----
+    var chartWrap = el("div", "radar-wrap");
+    var W = 600, H = 440, cx = 300, cy = 220, R = 150;
+    var s = svgEl("svg", {
+      "class": "radar", viewBox: "0 0 " + W + " " + H,
+      role: "img", "aria-label": "Radardiagram över kompetensområden"
+    });
+
+    // concentric grid rings (levels 1..MAX)
+    for (var ring = 1; ring <= MAX; ring++) {
+      var rpts = [];
+      for (var ri = 0; ri < n; ri++) {
+        var rp = radarXY(cx, cy, R * ring / MAX, ri, n);
+        rpts.push(rp.x.toFixed(1) + "," + rp.y.toFixed(1));
+      }
+      s.appendChild(svgEl("polygon", { "class": "radar-ring", points: rpts.join(" ") }));
+    }
+
+    // spokes + axis labels
+    for (var i = 0; i < n; i++) {
+      var edge = radarXY(cx, cy, R, i, n);
+      s.appendChild(svgEl("line", {
+        "class": "radar-spoke", x1: cx, y1: cy,
+        x2: edge.x.toFixed(1), y2: edge.y.toFixed(1)
+      }));
+
+      var lp = radarXY(cx, cy, R + 20, i, n);
+      var anchor = "middle";
+      if (lp.x > cx + 1) anchor = "start";
+      else if (lp.x < cx - 1) anchor = "end";
+      var label = svgEl("text", {
+        "class": "radar-label", x: lp.x.toFixed(1), y: lp.y.toFixed(1),
+        "text-anchor": anchor, "dominant-baseline": "middle",
+        "data-area-index": i
+      });
+      label.textContent = points[i].area;
+      s.appendChild(label);
+    }
+
+    // target + current polygons
+    var tgt = [], cur = [];
+    for (var pi = 0; pi < n; pi++) {
+      var tp = radarXY(cx, cy, R * points[pi].target / MAX, pi, n);
+      tgt.push(tp.x.toFixed(1) + "," + tp.y.toFixed(1));
+      var cp = radarXY(cx, cy, R * points[pi].current / MAX, pi, n);
+      cur.push(cp.x.toFixed(1) + "," + cp.y.toFixed(1));
+    }
+    s.appendChild(svgEl("polygon", { "class": "radar-target", points: tgt.join(" ") }));
+    s.appendChild(svgEl("polygon", { "class": "radar-current", points: cur.join(" ") }));
+
+    // dots on the current vertices
+    for (var di = 0; di < n; di++) {
+      var dp = radarXY(cx, cy, R * points[di].current / MAX, di, n);
+      s.appendChild(svgEl("circle", {
+        "class": "radar-dot", cx: dp.x.toFixed(1), cy: dp.y.toFixed(1), r: 3.5
+      }));
+    }
+
+    chartWrap.appendChild(s);
+
+    var leg = el("div", "radar-legend");
+    [["is-current", "Din nivå"], ["is-target", "Mål"]].forEach(function (pair) {
+      var item = el("span", "rl-item");
+      item.appendChild(el("span", "rl-swatch " + pair[0]));
+      item.appendChild(el("span", null, pair[1]));
+      leg.appendChild(item);
+    });
+    chartWrap.appendChild(leg);
+    grid.appendChild(chartWrap);
+
+    // ---- side: key numbers + per-area breakdown ----
+    var side = el("div", "dash-side");
+
+    var roleSum = logic.summarizeRole(role, levels);
+    var stats = el("div", "dash-stats");
+
+    var stat1 = el("div", "stat");
+    var n1 = el("div", "stat-num");
+    n1.appendChild(el("b", null, String(roleSum.met)));
+    n1.appendChild(document.createTextNode(" / " + roleSum.total));
+    stat1.appendChild(n1);
+    stat1.appendChild(el("div", "stat-label", "färdigheter på rekommenderad nivå"));
+    stats.appendChild(stat1);
+
+    var gapped = points
+      .map(function (d) { return { area: d.area, gap: d.target - d.current }; })
+      .filter(function (d) { return d.gap > 0.001; })
+      .sort(function (a, b) { return b.gap - a.gap; });
+    var stat2 = el("div", "stat");
+    if (gapped.length) {
+      stat2.appendChild(el("div", "stat-num stat-area", gapped[0].area));
+      stat2.appendChild(el("div", "stat-label", "störst utvecklingsbehov just nu"));
+    } else {
+      stat2.appendChild(el("div", "stat-num stat-area", "Allt på nivå"));
+      stat2.appendChild(el("div", "stat-label", "inga gap kvar i rollen"));
+    }
+    stats.appendChild(stat2);
+    side.appendChild(stats);
+
+    var list = el("div", "dash-areas");
+    points.forEach(function (d, idx) {
+      var row = el("button", "dash-area-row");
+      row.type = "button";
+      row.setAttribute("data-area-index", idx);
+
+      var top = el("div", "dar-top");
+      top.appendChild(el("span", "dar-name", d.area));
+      top.appendChild(el("span", "dar-count" + (d.met === d.total ? " is-complete" : ""),
+        d.met + "/" + d.total));
+      row.appendChild(top);
+
+      var bar = el("div", "dar-bar");
+      var tBar = el("i", "dar-bar-target");
+      tBar.style.width = (d.target / MAX * 100).toFixed(1) + "%";
+      var cBar = el("i", "dar-bar-current");
+      cBar.style.width = (d.current / MAX * 100).toFixed(1) + "%";
+      bar.appendChild(tBar);
+      bar.appendChild(cBar);
+      row.appendChild(bar);
+
+      list.appendChild(row);
+    });
+    side.appendChild(list);
+    grid.appendChild(side);
+
+    pane.appendChild(grid);
+  }
+
+  // ====================================================================
   // PLAN view
   // ====================================================================
 
@@ -506,7 +680,10 @@
         card.appendChild(levelsRow);
 
         var nextGuide = leaf.levelGuide && leaf.levelGuide[cur + 1];
-        if (nextGuide) card.appendChild(el("p", "plan-next-text", nextGuide));
+        if (nextGuide) {
+          card.appendChild(el("p", "plan-next-text",
+            logic.normalizeGuide(nextGuide).summary));
+        }
 
         grid.appendChild(card);
       });
@@ -521,6 +698,7 @@
 
   function setView(next) {
     view = next;
+    document.getElementById("dashboard-view").hidden = (view !== "dashboard");
     document.getElementById("overview-view").hidden = (view !== "overview");
     document.getElementById("plan-view").hidden = (view !== "plan");
   }
@@ -528,6 +706,7 @@
   function render() {
     renderRail();
     renderTopbar();
+    renderRadar();
     renderAreas();
     renderDetail();
     renderPlan();
@@ -592,6 +771,22 @@
 
     var tab = t.closest(".tab");
     if (tab) { setView(tab.getAttribute("data-view")); render(); return; }
+
+    var areaJump = t.closest("[data-area-index]");
+    if (areaJump) {
+      var node = role.nodes[parseInt(areaJump.getAttribute("data-area-index"), 10)];
+      if (node) {
+        var leaves = logic.collectLeaves(node);
+        if (leaves.length) {
+          selectLeaf(leaves[0].id, { toOverview: true, openArea: true, scrollIntoView: true });
+        } else {
+          openAreas[node.id] = true;
+          setView("overview");
+          render();
+        }
+      }
+      return;
+    }
 
     var areaHead = t.closest(".area-head");
     if (areaHead) {
