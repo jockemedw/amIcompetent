@@ -23,6 +23,7 @@
   // level passing after an earlier one failed reads as guessing).
   function resultLevel(graded) {
     var level = 0;
+    // Levels are always 1–3, enforced by validateQuizData.
     for (var L = 1; L <= 3; L++) {
       var g = graded[L];
       if (g && g.total > 0 && g.correct === g.total) level = L;
@@ -39,7 +40,7 @@
       var levelsSeen = {};
       qs.forEach(function (q, i) {
         var where = leafId + "[" + i + "]";
-        if (!q.options || q.options.length !== 4) {
+        if (!Array.isArray(q.options) || q.options.length !== 4) {
           errors.push(where + ": must have exactly 4 options");
         }
         if (typeof q.answer !== "number" || q.answer < 0 || q.answer > 3) {

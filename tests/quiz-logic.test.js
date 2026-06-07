@@ -88,3 +88,19 @@ test("validateQuizData: flags wrong option count, bad answer, missing level", ()
   assert.ok(errors.some(e => e.includes("answer")));
   assert.ok(errors.some(e => e.includes("level 3")));
 });
+
+test("validateQuizData: flags options that are not an array", () => {
+  const data = {
+    baz: [
+      { level: 1, prompt: "p", options: "abcd", answer: 0 },
+      { level: 2, prompt: "p", options: ["a","b","c","d"], answer: 1 },
+      { level: 3, prompt: "p", options: ["a","b","c","d"], answer: 2 }
+    ]
+  };
+  const errors = quiz.validateQuizData(data);
+  assert.ok(errors.some(e => e.includes("4 options")));
+});
+
+test("resultLevel: empty graded object => 0", () => {
+  assert.strictEqual(quiz.resultLevel({}), 0);
+});
