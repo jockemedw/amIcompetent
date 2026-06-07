@@ -22,7 +22,7 @@
   var selectedLeafId = restoreSelectedLeaf();
   var openAreas = defaultOpenAreas();
   var lastDetailLeaf = null;        // gates the detail entrance animation
-  var quizSession = null;   // { leafId, questions, answers:[], index, pending, revealed }
+  var quizSession = null;   // { leafId, questions, answers:[], index, revealed }
 
   // --- persistence helpers --------------------------------------------
 
@@ -736,7 +736,7 @@
     if (!questions.length) return;
     quizSession = {
       leafId: leafId, questions: questions,
-      answers: [], index: 0, pending: null, revealed: false
+      answers: [], index: 0, revealed: false
     };
     document.getElementById("quiz-overlay").hidden = false;
     renderQuiz();
@@ -808,14 +808,13 @@
 
     wrap.appendChild(el("p", "quiz-prompt", q.prompt));
 
+    var chosen = quizSession.answers[i];   // undefined until the user picks
     var opts = el("div", "quiz-options");
     q.options.forEach(function (opt, oi) {
       var cls = "quiz-option";
       if (quizSession.revealed) {
         if (oi === q.answer) cls += " is-correct";
-        else if (oi === quizSession.pending) cls += " is-wrong";
-      } else if (oi === quizSession.pending) {
-        cls += " is-chosen";
+        else if (oi === chosen) cls += " is-wrong";
       }
       var b = el("button", cls);
       b.type = "button";
@@ -827,7 +826,7 @@
     wrap.appendChild(opts);
 
     if (quizSession.revealed) {
-      var correct = quizSession.pending === q.answer;
+      var correct = chosen === q.answer;
       var fb = el("div", "quiz-feedback" + (correct ? " is-correct" : " is-wrong"));
       fb.appendChild(el("strong", null, correct ? "Rätt!" : "Inte riktigt."));
       if (q.explanation) fb.appendChild(el("p", null, q.explanation));
@@ -838,13 +837,6 @@
       next.setAttribute("data-quiz-next", "1");
       next.textContent = (i + 1 >= qs.length) ? "Se resultat" : "Nästa fråga";
       wrap.appendChild(next);
-    } else {
-      var submit = el("button", "quiz-submit");
-      submit.type = "button";
-      submit.setAttribute("data-quiz-answer", "1");
-      submit.textContent = "Svara";
-      if (quizSession.pending == null) submit.disabled = true;
-      wrap.appendChild(submit);
     }
 
     return wrap;
@@ -984,17 +976,13 @@
       if (t.closest("[data-quiz-close]")) { closeQuiz(); return; }
       var opt = t.closest("[data-quiz-option]");
       if (opt && !quizSession.revealed) {
-        quizSession.pending = parseInt(opt.getAttribute("data-quiz-option"), 10);
-        renderQuiz(); return;
-      }
-      if (t.closest("[data-quiz-answer]") && quizSession.pending != null) {
-        quizSession.answers[quizSession.index] = quizSession.pending;
+        // One click commits the answer and reveals right/wrong immediately.
+        quizSession.answers[quizSession.index] = parseInt(opt.getAttribute("data-quiz-option"), 10);
         quizSession.revealed = true;
         renderQuiz(); return;
       }
       if (t.closest("[data-quiz-next]")) {
         quizSession.index += 1;
-        quizSession.pending = null;
         quizSession.revealed = false;
         renderQuiz(); return;
       }
