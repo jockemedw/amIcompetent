@@ -968,6 +968,7 @@
     var t = e.target;
 
     if (quizSession) {
+      if (t.id === "quiz-overlay") { closeQuiz(); return; }
       if (t.closest("[data-quiz-close]")) { closeQuiz(); return; }
       var opt = t.closest("[data-quiz-option]");
       if (opt && !quizSession.revealed) {
