@@ -839,13 +839,57 @@
   }
 
   function renderQuizResult(leaf) {
-    var wrap = el("div", "quiz-body");
-    wrap.appendChild(el("p", "quiz-prompt", "Resultat för " + leaf.title));
-    var close = el("button", "quiz-next");
-    close.type = "button";
-    close.setAttribute("data-quiz-close", "1");
-    close.textContent = "Stäng";
-    wrap.appendChild(close);
+    var graded = quizApi.gradeQuiz(quizSession.questions, quizSession.answers);
+    var level = quizApi.resultLevel(graded);
+    saveQuizResult(leaf.id, level);
+
+    var wrap = el("div", "quiz-body quiz-result");
+    wrap.appendChild(el("p", "quiz-result-eyebrow", "Ditt resultat"));
+
+    var big = el("div", "quiz-result-level");
+    big.appendChild(el("b", null, String(level)));
+    big.appendChild(document.createTextNode(" · " + labelForLevel(level)));
+    wrap.appendChild(big);
+
+    var breakdown = el("div", "quiz-breakdown");
+    [1, 2, 3].forEach(function (L) {
+      var g = graded[L] || { correct: 0, total: 0 };
+      var passed = g.total > 0 && g.correct === g.total;
+      var row = el("div", "quiz-bd-row" + (passed ? " is-pass" : ""));
+      row.appendChild(el("span", "quiz-bd-level", "Nivå " + L));
+      row.appendChild(el("span", "quiz-bd-score", g.correct + "/" + g.total + " rätt"));
+      var mark = el("span", "quiz-bd-mark");
+      mark.appendChild(svg(passed ? "M20 6L9 17l-5-5" : "M18 6L6 18M6 6l12 12", "0 0 24 24"));
+      row.appendChild(mark);
+      breakdown.appendChild(row);
+    });
+    wrap.appendChild(breakdown);
+
+    var current = logic.getLevel(levels, leaf.id);
+    wrap.appendChild(el("p", "quiz-result-note",
+      "Din nuvarande skattning: " + labelForLevel(current) + " (nivå " + current + ")."));
+
+    var actions = el("div", "quiz-actions");
+    if (level !== current) {
+      var setBtn = el("button", "quiz-set");
+      setBtn.type = "button";
+      setBtn.setAttribute("data-quiz-set", String(level));
+      setBtn.textContent = "Sätt min nivå till " + level;
+      actions.appendChild(setBtn);
+    }
+    var keep = el("button", "quiz-keep");
+    keep.type = "button";
+    keep.setAttribute("data-quiz-close", "1");
+    keep.textContent = (level === current) ? "Stäng" : "Behåll nivå " + current;
+    actions.appendChild(keep);
+
+    var retry = el("button", "quiz-retry");
+    retry.type = "button";
+    retry.setAttribute("data-quiz-retry", "1");
+    retry.textContent = "Gör om";
+    actions.appendChild(retry);
+
+    wrap.appendChild(actions);
     return wrap;
   }
 
@@ -940,6 +984,18 @@
         quizSession.pending = null;
         quizSession.revealed = false;
         renderQuiz(); return;
+      }
+      var qSet = t.closest("[data-quiz-set]");
+      if (qSet) {
+        var lid = quizSession.leafId;
+        var lvl = parseInt(qSet.getAttribute("data-quiz-set"), 10);
+        setLevel(lid, lvl);
+        closeQuiz();
+        return;
+      }
+      if (t.closest("[data-quiz-retry]")) {
+        openQuiz(quizSession.leafId);
+        return;
       }
     }
 
