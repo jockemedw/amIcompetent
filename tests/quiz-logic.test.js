@@ -127,3 +127,18 @@ test("quiz-data.js: passes structural validation", () => {
   const data = loadQuizData();
   assert.deepStrictEqual(quiz.validateQuizData(data), []);
 });
+
+test("quiz-data.js: correct-answer positions are well distributed", () => {
+  const data = loadQuizData();
+  const counts = [0, 0, 0, 0];
+  let total = 0;
+  Object.keys(data).forEach(id => {
+    data[id].forEach(q => { counts[q.answer] += 1; total += 1; });
+  });
+  // No single option slot may dominate, and every slot must be used —
+  // otherwise the quiz is gameable by always picking the same position.
+  counts.forEach((c, i) => {
+    assert.ok(c >= 6 && c <= 9, "index " + i + " used " + c + " times (want 6-9)");
+  });
+  assert.strictEqual(total, 30);
+});
