@@ -1084,7 +1084,9 @@ body {
   color: var(--accent, #2f5d4f);
   font-weight: 700;
 }
+.quiz-headings { flex: 1; min-width: 0; }
 .quiz-title { margin: 4px 0 0; font-size: 22px; }
+.quiz-modal:focus { outline: none; }
 .quiz-close {
   flex: none;
   width: 36px; height: 36px;

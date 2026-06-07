@@ -742,12 +742,17 @@
     renderQuiz();
   }
 
-  function closeQuiz() {
+  // skipRender is passed when the caller (e.g. applying a quiz level) has
+  // already re-rendered the app and a second render would be wasted work.
+  function closeQuiz(skipRender) {
     quizSession = null;
     var overlay = document.getElementById("quiz-overlay");
     overlay.hidden = true;
     overlay.innerHTML = "";
-    render();
+    if (!skipRender) render();
+    // Return focus to the (re-rendered) trigger button for keyboard users.
+    var trigger = document.querySelector(".detail-test-btn");
+    if (trigger) trigger.focus();
   }
 
   function renderQuiz() {
@@ -756,12 +761,18 @@
     var leaf = findLeaf(quizSession.leafId);
 
     var modal = el("div", "quiz-modal");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "quiz-title");
+    modal.tabIndex = -1;
 
     var head = el("div", "quiz-head");
-    var heies = el("div", "quiz-headings");
-    heies.appendChild(el("span", "quiz-eyebrow", "Kunskapstest"));
-    heies.appendChild(el("h2", "quiz-title", leaf.title));
-    head.appendChild(heies);
+    var headings = el("div", "quiz-headings");
+    headings.appendChild(el("span", "quiz-eyebrow", "Kunskapstest"));
+    var title = el("h2", "quiz-title", leaf.title);
+    title.id = "quiz-title";
+    headings.appendChild(title);
+    head.appendChild(headings);
     var close = el("button", "quiz-close");
     close.type = "button";
     close.setAttribute("data-quiz-close", "1");
@@ -777,6 +788,7 @@
     }
 
     overlay.appendChild(modal);
+    modal.focus();   // keep focus inside the dialog across re-renders
   }
 
   function renderQuizQuestion() {
@@ -874,7 +886,7 @@
       var setBtn = el("button", "quiz-set");
       setBtn.type = "button";
       setBtn.setAttribute("data-quiz-set", String(level));
-      setBtn.textContent = "Sätt min nivå till " + level;
+      setBtn.textContent = "Sätt min nivå till " + labelForLevel(level) + " (" + level + ")";
       actions.appendChild(setBtn);
     }
     var keep = el("button", "quiz-keep");
@@ -990,8 +1002,8 @@
       if (qSet) {
         var lid = quizSession.leafId;
         var lvl = parseInt(qSet.getAttribute("data-quiz-set"), 10);
-        setLevel(lid, lvl);
-        closeQuiz();
+        setLevel(lid, lvl);   // already re-renders the app
+        closeQuiz(true);      // skip the redundant second render
         return;
       }
       if (t.closest("[data-quiz-retry]")) {
