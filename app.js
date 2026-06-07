@@ -728,6 +728,128 @@
   }
 
   // ====================================================================
+  // QUIZ modal
+  // ====================================================================
+
+  function openQuiz(leafId) {
+    var questions = quizData[leafId] || [];
+    if (!questions.length) return;
+    quizSession = {
+      leafId: leafId, questions: questions,
+      answers: [], index: 0, pending: null, revealed: false
+    };
+    document.getElementById("quiz-overlay").hidden = false;
+    renderQuiz();
+  }
+
+  function closeQuiz() {
+    quizSession = null;
+    var overlay = document.getElementById("quiz-overlay");
+    overlay.hidden = true;
+    overlay.innerHTML = "";
+    render();
+  }
+
+  function renderQuiz() {
+    var overlay = document.getElementById("quiz-overlay");
+    overlay.innerHTML = "";
+    var leaf = findLeaf(quizSession.leafId);
+
+    var modal = el("div", "quiz-modal");
+
+    var head = el("div", "quiz-head");
+    var heies = el("div", "quiz-headings");
+    heies.appendChild(el("span", "quiz-eyebrow", "Kunskapstest"));
+    heies.appendChild(el("h2", "quiz-title", leaf.title));
+    head.appendChild(heies);
+    var close = el("button", "quiz-close");
+    close.type = "button";
+    close.setAttribute("data-quiz-close", "1");
+    close.setAttribute("aria-label", "Stäng test");
+    close.appendChild(svg("M18 6L6 18M6 6l12 12", "0 0 24 24"));
+    head.appendChild(close);
+    modal.appendChild(head);
+
+    if (quizSession.index >= quizSession.questions.length) {
+      modal.appendChild(renderQuizResult(leaf));
+    } else {
+      modal.appendChild(renderQuizQuestion());
+    }
+
+    overlay.appendChild(modal);
+  }
+
+  function renderQuizQuestion() {
+    var qs = quizSession.questions;
+    var i = quizSession.index;
+    var q = qs[i];
+    var wrap = el("div", "quiz-body");
+
+    var prog = el("div", "quiz-progress");
+    prog.appendChild(el("span", "quiz-progress-text", "Fråga " + (i + 1) + " / " + qs.length));
+    var bar = el("div", "quiz-progress-bar");
+    var fill = el("i");
+    fill.style.width = Math.round((i / qs.length) * 100) + "%";
+    bar.appendChild(fill);
+    prog.appendChild(bar);
+    wrap.appendChild(prog);
+
+    wrap.appendChild(el("p", "quiz-prompt", q.prompt));
+
+    var opts = el("div", "quiz-options");
+    q.options.forEach(function (opt, oi) {
+      var cls = "quiz-option";
+      if (quizSession.revealed) {
+        if (oi === q.answer) cls += " is-correct";
+        else if (oi === quizSession.pending) cls += " is-wrong";
+      } else if (oi === quizSession.pending) {
+        cls += " is-chosen";
+      }
+      var b = el("button", cls);
+      b.type = "button";
+      b.setAttribute("data-quiz-option", String(oi));
+      if (quizSession.revealed) b.disabled = true;
+      b.appendChild(el("span", "quiz-option-text", opt));
+      opts.appendChild(b);
+    });
+    wrap.appendChild(opts);
+
+    if (quizSession.revealed) {
+      var correct = quizSession.pending === q.answer;
+      var fb = el("div", "quiz-feedback" + (correct ? " is-correct" : " is-wrong"));
+      fb.appendChild(el("strong", null, correct ? "Rätt!" : "Inte riktigt."));
+      if (q.explanation) fb.appendChild(el("p", null, q.explanation));
+      wrap.appendChild(fb);
+
+      var next = el("button", "quiz-next");
+      next.type = "button";
+      next.setAttribute("data-quiz-next", "1");
+      next.textContent = (i + 1 >= qs.length) ? "Se resultat" : "Nästa fråga";
+      wrap.appendChild(next);
+    } else {
+      var submit = el("button", "quiz-submit");
+      submit.type = "button";
+      submit.setAttribute("data-quiz-answer", "1");
+      submit.textContent = "Svara";
+      if (quizSession.pending == null) submit.disabled = true;
+      wrap.appendChild(submit);
+    }
+
+    return wrap;
+  }
+
+  function renderQuizResult(leaf) {
+    var wrap = el("div", "quiz-body");
+    wrap.appendChild(el("p", "quiz-prompt", "Resultat för " + leaf.title));
+    var close = el("button", "quiz-next");
+    close.type = "button";
+    close.setAttribute("data-quiz-close", "1");
+    close.textContent = "Stäng";
+    wrap.appendChild(close);
+    return wrap;
+  }
+
+  // ====================================================================
   // Render orchestration
   // ====================================================================
 
@@ -801,6 +923,29 @@
   document.addEventListener("click", function (e) {
     var t = e.target;
 
+    if (quizSession) {
+      if (t.closest("[data-quiz-close]")) { closeQuiz(); return; }
+      var opt = t.closest("[data-quiz-option]");
+      if (opt && !quizSession.revealed) {
+        quizSession.pending = parseInt(opt.getAttribute("data-quiz-option"), 10);
+        renderQuiz(); return;
+      }
+      if (t.closest("[data-quiz-answer]") && quizSession.pending != null) {
+        quizSession.answers[quizSession.index] = quizSession.pending;
+        quizSession.revealed = true;
+        renderQuiz(); return;
+      }
+      if (t.closest("[data-quiz-next]")) {
+        quizSession.index += 1;
+        quizSession.pending = null;
+        quizSession.revealed = false;
+        renderQuiz(); return;
+      }
+    }
+
+    var quizOpen = t.closest("[data-quiz-open]");
+    if (quizOpen) { openQuiz(quizOpen.getAttribute("data-quiz-open")); return; }
+
     var roleBtn = t.closest(".rail-role");
     if (roleBtn) { selectRole(roleBtn.getAttribute("data-role-id")); return; }
 
@@ -851,6 +996,7 @@
 
   // Keyboard: arrow-key navigation between level options
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && quizSession) { closeQuiz(); return; }
     var opt = document.activeElement;
     if (!opt || !opt.classList || !opt.classList.contains("lvl-step")) return;
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" &&
