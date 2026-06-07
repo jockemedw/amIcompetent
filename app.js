@@ -235,10 +235,12 @@
 
     if (scaleHelp.length) {
       var legend = el("div", "legend");
+      legend.setAttribute("aria-label", "Nivåskala");
       scaleHelp.forEach(function (h) {
-        var item = el("div", "legend-item");
+        var item = el("span", "legend-item");
+        item.title = h.text;                       // full förklaring vid hover
+        item.appendChild(el("span", "legend-num", String(h.level)));
         item.appendChild(el("span", "legend-step", labelForLevel(h.level)));
-        item.appendChild(document.createTextNode(h.text));
         legend.appendChild(item);
       });
       foot.appendChild(legend);
