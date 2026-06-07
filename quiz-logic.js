@@ -6,8 +6,21 @@
     return !!(qs && qs.length);
   }
 
+  // answers[i] = the option index the user picked for questions[i].
+  // Returns { <level>: { correct, total } } for every level present.
+  function gradeQuiz(questions, answers) {
+    var out = {};
+    questions.forEach(function (q, i) {
+      if (!out[q.level]) out[q.level] = { correct: 0, total: 0 };
+      out[q.level].total += 1;
+      if (answers[i] === q.answer) out[q.level].correct += 1;
+    });
+    return out;
+  }
+
   var api = {
-    hasQuiz: hasQuiz
+    hasQuiz: hasQuiz,
+    gradeQuiz: gradeQuiz
   };
 
   if (typeof module !== "undefined" && module.exports) {
