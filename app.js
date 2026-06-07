@@ -19,6 +19,7 @@
   var view = "overview";            // "overview" | "plan"
   var selectedLeafId = restoreSelectedLeaf();
   var openAreas = defaultOpenAreas();
+  var lastDetailLeaf = null;        // gates the detail entrance animation
 
   // --- persistence helpers --------------------------------------------
 
@@ -327,62 +328,58 @@
   // DETAIL pane (right)
   // ====================================================================
 
-  function renderLadder(leaf) {
+  // The interactive level ladder: every level is a selectable radio whose
+  // body IS its criterion. Picking one sets "Din nivå" (the "Du" marker);
+  // "Mål" stays on the target. No separate selector, no repeated next-step.
+  function renderLevelLadder(leaf, animate) {
     var current = logic.getLevel(levels, leaf.id);
-    var ladder = el("ol", "ladder");
+    var group = el("div", "lvl");
+    group.setAttribute("role", "radiogroup");
+    group.setAttribute("aria-label", "Din nivå för " + leaf.title);
     var idx = 0;
 
     scale.forEach(function (sc) {
-      if (sc.level === 0) return;                 // ladder starts at step 1
       var guide = leaf.levelGuide && leaf.levelGuide[sc.level];
-      if (!guide) return;
+      if (sc.level !== 0 && !guide) return;       // only real, defined steps
 
-      var cls = "ladder-rung";
-      if (current > 0 && sc.level <= current) cls += " is-reached";
-      if (current > 0 && sc.level === current) cls += " is-current";
-      if (sc.level === leaf.target) cls += " is-target";
+      var isSel = sc.level === current;
+      var isTarget = sc.level === leaf.target;
 
-      var rung = el("li", cls);
-      rung.style.animationDelay = (idx * 55 + 60) + "ms";
+      var cls = "lvl-step";
+      if (isSel) cls += " is-selected";
+      if (isTarget) cls += " is-target";
+
+      var step = el("button", cls);
+      step.type = "button";
+      step.setAttribute("data-leaf-id", leaf.id);
+      step.setAttribute("data-level", String(sc.level));
+      step.setAttribute("role", "radio");
+      step.setAttribute("aria-checked", isSel ? "true" : "false");
+      if (animate) step.style.setProperty("--i", idx);
       idx++;
 
-      rung.appendChild(el("span", "ladder-rung-num", String(sc.level)));
+      var radioCls = "lvl-radio";
+      if (isSel) radioCls += " is-on";
+      else if (sc.level > 0 && sc.level < current) radioCls += " is-passed";
+      var radio = el("span", radioCls);
+      radio.appendChild(svg("M20 6L9 17l-5-5", "0 0 24 24"));
+      step.appendChild(radio);
 
-      var rbody = el("div", "rung-body");
-      var rhead = el("div", "rung-head");
-      rhead.appendChild(el("span", "rung-label", sc.label));
-      var tags = el("span", "rung-tags");
-      if (sc.level === leaf.target) tags.appendChild(el("span", "rung-tag tag-target", "Mål"));
-      if (current > 0 && sc.level === current) tags.appendChild(el("span", "rung-tag tag-current", "Du"));
-      rhead.appendChild(tags);
-      rbody.appendChild(rhead);
-      rbody.appendChild(el("p", "rung-text", guide));
-      rung.appendChild(rbody);
+      var body = el("div", "lvl-body");
+      var head = el("div", "lvl-head");
+      head.appendChild(el("span", "lvl-label", sc.level === 0 ? "Ingen" : sc.label));
+      var tags = el("span", "lvl-tags");
+      if (isTarget) tags.appendChild(el("span", "lvl-tag tag-target", "Mål"));
+      head.appendChild(tags);
+      body.appendChild(head);
+      body.appendChild(el("p", "lvl-text",
+        sc.level === 0 ? "Ingen erfarenhet ännu." : guide));
+      step.appendChild(body);
 
-      ladder.appendChild(rung);
+      group.appendChild(step);
     });
 
-    return ladder;
-  }
-
-  function renderLevelControl(leaf) {
-    var current = logic.getLevel(levels, leaf.id);
-    var set = el("div", "level-set");
-    set.setAttribute("role", "radiogroup");
-    set.setAttribute("aria-label", "Din nivå");
-
-    scale.forEach(function (sc) {
-      var opt = el("button", "level-opt");
-      opt.type = "button";
-      opt.setAttribute("data-leaf-id", leaf.id);
-      opt.setAttribute("data-level", String(sc.level));
-      opt.setAttribute("role", "radio");
-      opt.setAttribute("aria-checked", sc.level === current ? "true" : "false");
-      opt.appendChild(el("span", "level-opt-num", String(sc.level)));
-      opt.appendChild(el("span", "level-opt-label", sc.label));
-      set.appendChild(opt);
-    });
-    return set;
+    return group;
   }
 
   function renderDetail() {
@@ -393,12 +390,15 @@
     if (!leaf) {
       var empty = el("div", "detail-empty");
       empty.appendChild(el("h2", null, "Välj en färdighet"));
-      empty.appendChild(el("p", null, "Klicka på en färdighet i listan för att se nivåtrappan och skatta dig själv."));
+      empty.appendChild(el("p", null, "Klicka på en färdighet i listan för att se nivåerna och skatta dig själv."));
       pane.appendChild(empty);
       return;
     }
 
-    var card = el("div", "detail-card");
+    var animate = (selectedLeafId !== lastDetailLeaf);
+    lastDetailLeaf = selectedLeafId;
+
+    var card = el("div", "detail-card" + (animate ? " anim" : ""));
 
     var trail = pathToLeaf(leaf.id);
     var crumb = el("div", "detail-crumb");
@@ -410,40 +410,34 @@
 
     card.appendChild(el("h2", "detail-title", leaf.title));
 
-    var target = el("span", "detail-target");
+    // Status at a glance: target + where you are.
+    var current = logic.getLevel(levels, leaf.id);
+    var meta = el("div", "detail-meta");
+
+    var target = el("span", "meta-badge is-target");
     target.appendChild(svg("M12 2l2.4 6.9H22l-5.8 4.3 2.2 7-6.4-4.6-6.4 4.6 2.2-7L2 8.9h7.6z", "0 0 24 24"));
     target.appendChild(document.createTextNode("Mål: " + labelForLevel(leaf.target)));
-    card.appendChild(target);
+    meta.appendChild(target);
+
+    if (current >= leaf.target) {
+      var done = el("span", "meta-badge is-done");
+      done.appendChild(svg("M20 6L9 17l-5-5", "0 0 24 24"));
+      done.appendChild(document.createTextNode("På rekommenderad nivå"));
+      meta.appendChild(done);
+    } else {
+      var gap = leaf.target - current;
+      var gapBadge = el("span", "meta-badge is-gap");
+      gapBadge.appendChild(document.createTextNode(
+        gap + (gap === 1 ? " steg kvar" : " steg kvar") + " till mål"));
+      meta.appendChild(gapBadge);
+    }
+    card.appendChild(meta);
 
     if (leaf.description) card.appendChild(el("p", "detail-desc", leaf.description));
 
-    if (leaf.levelGuide) {
-      card.appendChild(el("div", "detail-section-label", "Nivåtrappa — nybörjare till expert"));
-      card.appendChild(renderLadder(leaf));
-    }
-
     card.appendChild(el("div", "detail-section-label", "Din nivå"));
-    card.appendChild(renderLevelControl(leaf));
-
-    var current = logic.getLevel(levels, leaf.id);
-    if (current >= leaf.target) {
-      var done = el("div", "detail-done");
-      done.appendChild(svg("M20 6L9 17l-5-5", "0 0 24 24"));
-      done.appendChild(document.createTextNode("Du är på rekommenderad nivå för den här färdigheten."));
-      card.appendChild(done);
-    } else {
-      var nextLevel = current + 1;
-      var nextGuide = leaf.levelGuide && leaf.levelGuide[nextLevel];
-      if (nextGuide) {
-        var ns = el("div", "next-step");
-        ns.appendChild(svg("M5 12h14M13 6l6 6-6 6", "0 0 24 24"));
-        var nb = el("div", "next-step-body");
-        nb.appendChild(el("div", "next-step-label", "Nästa steg → " + labelForLevel(nextLevel)));
-        nb.appendChild(el("p", "next-step-text", nextGuide));
-        ns.appendChild(nb);
-        card.appendChild(ns);
-      }
-    }
+    card.appendChild(el("p", "lvl-hint", "Klicka på den nivå som bäst beskriver var du är i dag."));
+    card.appendChild(renderLevelLadder(leaf, animate));
 
     pane.appendChild(card);
   }
@@ -607,10 +601,10 @@
       return;
     }
 
-    var levelOpt = t.closest(".level-opt");
-    if (levelOpt) {
-      setLevel(levelOpt.getAttribute("data-leaf-id"),
-        parseInt(levelOpt.getAttribute("data-level"), 10));
+    var levelStep = t.closest(".lvl-step");
+    if (levelStep) {
+      setLevel(levelStep.getAttribute("data-leaf-id"),
+        parseInt(levelStep.getAttribute("data-level"), 10));
       return;
     }
 
@@ -628,7 +622,7 @@
   // Keyboard: arrow-key navigation between level options
   document.addEventListener("keydown", function (e) {
     var opt = document.activeElement;
-    if (!opt || !opt.classList || !opt.classList.contains("level-opt")) return;
+    if (!opt || !opt.classList || !opt.classList.contains("lvl-step")) return;
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" &&
         e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     e.preventDefault();
